@@ -1189,14 +1189,15 @@ return {
 
 	parse_mac: function(val) {
 		let mac = this.parse_invert(val);
-		let m = mac ? match(mac.val, /^([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})$/i) : null;
+		let m = mac ? match(mac.val, /^([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})(\/([0-9]|[1-3][0-9]|4[0-8]))?$/i) : null;
 
 		if (!m)
 			return null;
 
-		mac.mac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x',
+		mac.mac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x%c%d',
 		                  hex(m[1]), hex(m[2]), hex(m[3]),
-		                  hex(m[4]), hex(m[5]), hex(m[6]));
+		                  hex(m[4]), hex(m[5]), hex(m[6]),
+		                  m[7] ? "/" : null, m[7]);
 
 		return mac;
 	},
