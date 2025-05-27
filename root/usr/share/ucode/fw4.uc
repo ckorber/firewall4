@@ -1194,10 +1194,31 @@ return {
 		if (!m)
 			return null;
 
-		mac.mac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x%c%d',
-		                  hex(m[1]), hex(m[2]), hex(m[3]),
-		                  hex(m[4]), hex(m[5]), hex(m[6]),
-		                  m[7] ? "/" : null, m[7]);
+		if (m[7]) {
+			let parts_null = [];
+			let parts_brd = [];
+			let len = int(m[7] / 8);
+
+			for (let i = 1; i <= 6 - len; i++) {
+				push(parts_null, hex(m[i]));
+				push(parts_brd, hex(m[i]));
+			}
+
+			for (i = 6 - len + 1; i <= 6; i++) {
+				push(parts_null, hex("00"));
+				push(parts_brd, hex("ff"));
+			}
+
+			mac.mac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x-%02x:%02x:%02x:%02x:%02x:%02x',
+							parts_null[1], parts_null[2], parts_null[3],
+							parts_null[4], parts_null[5], parts_null[6],
+							parts_brd[1], parts_brd[2], parts_brd[3],
+							parts_brd[4], parts_brd[5], parts_brd[6]);
+		} else {
+			mac.mac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x',
+							hex(m[1]), hex(m[2]), hex(m[3]),
+							hex(m[4]), hex(m[5]), hex(m[6]));
+		}
 
 		return mac;
 	},
