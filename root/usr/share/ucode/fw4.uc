@@ -1189,14 +1189,15 @@ return {
 
 	parse_mac: function(val) {
 		let mac = this.parse_invert(val);
-		let m = mac ? match(mac.val, /^([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})$/i) : null;
+		let m = mac ? match(mac.val, /^([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})[:-]([0-9a-f]{1,2})\/?((4[0-8]|[123]?\d))?$/i) : null;
 
 		if (!m)
 			return null;
 
-		mac.mac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x',
+		mac.mac = sprintf('%02x:%02x:%02x:%02x:%02x:%02x%s%s',
 		                  hex(m[1]), hex(m[2]), hex(m[3]),
-		                  hex(m[4]), hex(m[5]), hex(m[6]));
+		                  hex(m[4]), hex(m[5]), hex(m[6]),
+		                  m[7] ? '/' : '', m[7] ? m[7] : '');
 
 		return mac;
 	},
@@ -1669,6 +1670,37 @@ return {
 			return `"${replace(s, '"', "'")}"`;
 
 		return s;
+	},
+
+	mac_range: function(a) {
+		if (index(a.mac, "/") > 0) {
+			let mac_str = split(a.mac, "/");
+			let mac = mac_str[0];
+			let cidr = int(mac_str[1]);
+
+			let mac_parts = map(split(mac, ":"), p => { return int(p, 16); });
+
+			let part = 0;
+			for (let i=0; i<6; i++)
+				part = (part << 8) | mac_parts[i];
+
+			let mask = cidr == 0 ? 0 : (~0 << (48 - cidr)) & ((1 << 48) -1);
+
+			let network = part & mask;
+			let broadcast = network | (~mask & ((1 << 48) -1));
+
+			let fmt = (x) => {
+				let out = [];
+				for (let i=5; i>=0; i--) {
+					let byte = (x >> (i*8)) & 0xFF;
+					push(out, sprintf("%02x", byte));
+				}
+				return join(":", out);
+			};
+
+			return sprintf("%s-%s", fmt(network), fmt(broadcast));
+		}
+		return a.mac;
 	},
 
 	cidr: function(a) {
@@ -2420,8 +2452,8 @@ return {
 				sports_neg: map(filter_neg(sports), this.port),
 				dports_pos: map(filter_pos(dports), this.port),
 				dports_neg: map(filter_neg(dports), this.port),
-				smacs_pos: map(filter_pos(rule.src_mac), m => m.mac),
-				smacs_neg: map(filter_neg(rule.src_mac), m => m.mac),
+				smacs_pos: map(filter_pos(rule.src_mac), this.mac_range),
+				smacs_neg: map(filter_neg(rule.src_mac), this.mac_range),
 				icmp_types: map(icmptypes, i => (family == 4 ? i.type : i.type6)),
 				icmp_codes: map(icmpcodes, ic => `${(family == 4) ? ic.type : ic.type6} . ${(family == 4) ? ic.code_min : ic.code6_min}`)
 			};
